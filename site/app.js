@@ -2,7 +2,50 @@ const container = document.body
     //get Tooltp from .Html
 const tooltip = document.querySelector('.tooltip')
 
-let tooltipActive = false
+let spriteActive = false
+
+class Scene {
+    constructor(panorama) {
+        this.panorama = panorama
+        this.points = []
+        this.sprites = []
+        this.scene = null
+    }
+
+    createScene(scene) {
+        this.scene = scene
+            // creating sphere 
+        const geometry = new THREE.SphereGeometry(50, 32, 16);
+
+        const texture = new THREE.TextureLoader().load(this.image);
+        texture.wrapS = THREE.RepeatWrapping
+        texture.repeat.x = -1
+        const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, })
+        material.transparent = true
+        this.sphere = new THREE.Mesh(geometry, material);
+        this.scene.add(this.sphere)
+        this.points.forEach(this.addToolTip.bind(this))
+
+    }
+
+    addPoint(point) {
+        this.points.push(point);
+    }
+
+    addToolTip(point) {
+
+        let spriteMap = new THREE.TextureLoader().load('assets/up direction.png');
+        let spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap });
+        let sprite = new THREE.Sprite(spriteMaterial);
+        sprite.name = point.name
+            //Enable tooltip to not follow mouvement of the Camera
+        sprite.position.copy(point.position.clone().normalize().multiplyScalar(30))
+            //to  scale up the sprite
+        sprite.scale.multiplyScalar(2)
+        this.scene.add(sprite);
+        this.sprites.push(sprite);
+    }
+}
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
@@ -28,31 +71,22 @@ controls.enableZoom = false
 camera.position.set(-1, 0, 0)
 controls.update()
 
-// creating sphere 
-const geometry = new THREE.SphereGeometry(50, 32, 16);
+let s = new Scene("assets/essaie1.jpg")
+let s2 = new Scene("assets/essaie2.jpg")
 
-const texture = new THREE.TextureLoader().load("assets/essaie2.jpg");
-texture.wrapS = THREE.RepeatWrapping
-texture.repeat.x = -1
-const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-const sphere = new THREE.Mesh(geometry, material);
-scene.add(sphere);
+s.createScene(scene)
+s.addPoint({
+    position: new THREE.Vector3(0.04881278659140563, -49.94631700490292, -0.5402453268611607),
+    name: "Entrance",
+    scene: s2
+})
 
-//tooltip
+s2.addPoint({
+    position: new THREE.Vector3(0.04881278659140563, -49.94631700490292, -0.5402453268611607),
+    name: "Return",
+    scene: s
+})
 
-
-function addToolTip(position, name) {
-
-    let spriteMap = new THREE.TextureLoader().load('assets/up direction.png');
-    let spriteMaterial = new THREE.SpriteMaterial({ map: spriteMap });
-    let sprite = new THREE.Sprite(spriteMaterial);
-    sprite.name = name
-        //Enable tooltip to not follow mouvement of the Camera
-    sprite.position.copy(position.clone().normalize().multiplyScalar(30))
-        //to  scale up the sprite
-    sprite.scale.multiplyScalar(2)
-    scene.add(sprite);
-}
 //rendering
 function animate() {
     requestAnimationFrame(animate);
@@ -77,7 +111,9 @@ function onClick(e) {
     let intersects = rayCaster.intersectObjects(scene.children)
     intersects.forEach(function(intersect) {
             if (intersect.object.type === 'Sprite') {
-                console.log(intersect.object.name)
+                TweenLite.to(sphere.material, 1, {
+                    opacity: 0.2
+                })
             }
         })
         //--------to get the position of the sprite so that we can place direction in front of maybe a door--------------
@@ -104,17 +140,27 @@ function onMouseMove(e) {
             tooltip.style.top = ((-1 * p.y + 1) * window.innerHeight / 2) + 'px'
             tooltip.style.left = ((p.x + 1) * window.innerWidth / 2) + 'px'
             tooltip.classList.add('is-active')
-            tooltipActive = true
+            tooltip.innerHTML = intersect.object.name
+            spriteActive = intersect.object
             foundSprite = true
+            TweenLite.to(intersect.object.scale, 0.6, {
+                x: 4,
+                y: 4,
+                z: 4,
+            })
         }
     })
 
-    if (foundSprite === false && tooltipActive) {
+    if (foundSprite === false && spriteActive) {
         tooltip.classList.remove('is-active')
+        TweenLite.to(spriteActive.scale, 0.6, {
+            x: 2,
+            y: 2,
+            z: 2,
+        })
+        spriteActive = false
     }
 }
-
-addToolTip(new THREE.Vector3(0.04881278659140563, -49.94631700490292, -0.5402453268611607), 'Entrance')
 
 window.addEventListener('resize', onResize)
 container.addEventListener('click', onClick)
